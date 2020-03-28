@@ -1,0 +1,83 @@
+You must provide an amazon s3 bucket and IAM role named vmimport-image-import.
+It helps you access your images from your s3 to your ec2 
+{
+   "Version": "2012-10-17",
+   "Statement": [
+      {
+         "Effect": "Allow",
+         "Principal": { "Service": "vmie.amazonaws.com" },
+         "Action": "sts:AssumeRole",
+         "Condition": {
+            "StringEquals":{
+               "sts:Externalid": "vmimport"
+            }
+         }
+      }
+   ]
+}
+aws iam create-role --role-name vmimport --assume-role-policy-document "file://C:\import\trust-policy.json"
+
+
+Create a file named role-policy-json with the following policy , where disk-image-bucket is your bucket
+where your exported machine is stored. The below role allows the ec2 to modify the snapshot that is uploaded to
+it from s3
+
+{
+   "Version":"2012-10-17",
+   "Statement":[
+      {
+         "Effect":"Allow",
+         "Action":[
+            "s3:GetBucketLocation",
+            "s3:GetObject",
+            "s3:ListBucket" 
+         ],
+         "Resource":[
+            "arn:aws:s3:::mediawiki13",
+            "arn:aws:s3:::mediawiki13/*"
+         ]
+      },
+      {
+         "Effect":"Allow",
+         "Action":[
+            "s3:GetBucketLocation",
+            "s3:GetObject",
+            "s3:ListBucket",
+            "s3:PutObject",
+            "s3:GetBucketAcl"
+         ],
+         "Resource":[
+            "arn:aws:s3:::export-bucket",
+            "arn:aws:s3:::export-bucket/*"
+         ]
+      },
+      {
+         "Effect":"Allow",
+         "Action":[
+            "ec2:ModifySnapshotAttribute",
+            "ec2:CopySnapshot",
+            "ec2:RegisterImage",
+            "ec2:Describe*"
+         ],
+         "Resource":"*"
+      }
+   ]
+}
+
+
+Begin importing your image from s3 to ec2. If you have more than one server , you write the following
+script and modify it as the information of the server.
+
+[
+  {
+    "Description": "My MediaWiki",
+    "Format": "ova",
+    "UserBucket": {
+        "S3Bucket": "mediawiki13",
+        "S3Key": "mediawiki13.ova"
+    }
+}]
+
+aws ec2 import-image --description "My MediaWiki" --license-type BYOL --disk-containers "file://containers.json"
+
+
